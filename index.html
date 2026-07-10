@@ -325,11 +325,32 @@
   function parseDate(v){
     if(!v) return null;
     v = String(v).trim();
-    var d = new Date(v);
-    if(!isNaN(d.getTime()) && v.match(/\d{4}/)) return d;
-    var m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if(m){ var dt = new Date(+m[3], +m[1]-1, +m[2]); if(!isNaN(dt.getTime())) return dt; }
-    return null;
+    var d = null;
+
+    // ISO-style YYYY-MM-DD or YYYY/MM/DD — unambiguous, safe to parse directly
+    var iso = v.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+    if(iso){ d = new Date(+iso[1], +iso[2]-1, +iso[3]); }
+
+    // DD/MM/YYYY — Google Sheets' Thai-locale default export format.
+    // Deliberately checked BEFORE any generic Date() parsing, since native
+    // parsing would misread this as MM/DD/YYYY (US) and silently swap day/month.
+    if(!d || isNaN(d.getTime())){
+      var dmy = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if(dmy){ d = new Date(+dmy[3], +dmy[2]-1, +dmy[1]); }
+    }
+
+    // Fallback: let the browser try (handles things like "May 8, 2026")
+    if(!d || isNaN(d.getTime())){
+      var d2 = new Date(v);
+      if(!isNaN(d2.getTime())) d = d2;
+    }
+
+    if(!d || isNaN(d.getTime())) return null;
+
+    // Guard against Buddhist-Era years (พ.ศ.) if the sheet ever exports those
+    if(d.getFullYear() > 2400) d.setFullYear(d.getFullYear() - 543);
+
+    return d;
   }
   function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   function monthKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
