@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>วสันต์ปริ้น — บัญชีกองเงิน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF0E1;
+    --paper-line:#CDC7AC;
+    --surface:#FFFEF8;
+    --ink:#211D16;
+    --ink-soft:#6B6455;
+    --cyan:#0092C6;
+    --magenta:#C43D77;
+    --yellow:#B9820A;
+    --key:#33302A;
+    --green:#2E7D4F;
+    --red:#B5423B;
+    --radius:10px;
+    --font-display:'Roboto Slab', Georgia, serif;
+    --font-body:'IBM Plex Sans Thai','IBM Plex Sans', sans-serif;
+    --font-mono:'Space Mono','Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--font-body);
+    color:var(--ink);
+    background:
+      repeating-linear-gradient(var(--paper), var(--paper) 27px, var(--paper-line) 28px),
+      var(--paper);
+    padding:28px 16px 60px;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--cyan);}
+  .wrap{max-width:920px; margin:0 auto;}
+
+  /* ---- receipt header ---- */
+  .receipt-head{
+    background:var(--surface);
+    border-radius:var(--radius);
+    padding:22px 26px 18px;
+    box-shadow:0 1px 0 var(--paper-line), 0 8px 24px -18px rgba(0,0,0,.4);
+    position:relative;
+    margin-bottom:18px;
+  }
+  .receipt-head::before, .receipt-head::after{
+    content:"";
+    position:absolute; top:-6px; width:12px; height:12px; border-radius:50%;
+    background:var(--paper); box-shadow: inset 0 1px 2px rgba(0,0,0,.25);
+  }
+  .receipt-head::before{left:22px;}
+  .receipt-head::after{right:22px;}
+  .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 4px;
+  }
+  h1{
+    font-family:var(--font-display); font-weight:700; font-size:26px; margin:0 0 4px; letter-spacing:.01em;
+  }
+  .sub{color:var(--ink-soft); font-size:13.5px; margin:0;}
+
+  .statusline{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    margin-top:14px; padding-top:12px; border-top:1px dashed var(--paper-line);
+    font-family:var(--font-mono); font-size:12px; color:var(--ink-soft);
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-soft);display:inline-block;}
+  .dot.ok{background:var(--green);}
+  .dot.err{background:var(--red);}
+
+  /* ---- cards / sections ---- */
+  .card{
+    background:var(--surface);
+    border-radius:var(--radius);
+    padding:20px 22px;
+    margin-bottom:18px;
+    box-shadow:0 1px 0 var(--paper-line);
+  }
+  .card h2{
+    font-family:var(--font-display); font-size:17px; margin:0 0 4px; font-weight:700;
+  }
+  .card .desc{font-size:12.5px; color:var(--ink-soft); margin:0 0 14px;}
+
+  /* settings */
+  .settings-row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  input[type=text]{
+    flex:1; min-width:220px; font-family:var(--font-mono); font-size:12.5px;
+    padding:10px 12px; border-radius:6px; border:1px solid var(--paper-line);
+    background:#FBFAF3; color:var(--ink);
+  }
+  input[type=text]:focus{outline:2px solid var(--cyan); outline-offset:1px;}
+  button{
+    font-family:var(--font-body); font-weight:600; font-size:13px; cursor:pointer;
+    padding:10px 16px; border-radius:6px; border:1px solid var(--ink);
+    background:var(--ink); color:var(--paper); transition:transform .1s ease;
+  }
+  button:hover{transform:translateY(-1px);}
+  button:focus-visible{outline:2px solid var(--cyan); outline-offset:2px;}
+  button.ghost{background:transparent; color:var(--ink); border-color:var(--paper-line);}
+  details summary{cursor:pointer; font-size:12.5px; color:var(--ink-soft); margin-top:10px;}
+  details p, details ol{font-size:12.5px; color:var(--ink-soft); line-height:1.6;}
+  code{background:#F1EEE0; padding:1px 5px; border-radius:4px; font-family:var(--font-mono); font-size:11.5px;}
+
+  /* period selector */
+  select{
+    font-family:var(--font-mono); font-size:12.5px; padding:8px 10px; border-radius:6px;
+    border:1px solid var(--paper-line); background:#FBFAF3; color:var(--ink);
+  }
+
+  /* KPI receipt */
+  .kpi-list{list-style:none; margin:0; padding:0; font-family:var(--font-mono); font-size:13.5px;}
+  .kpi-list li{
+    display:flex; justify-content:space-between; gap:10px;
+    padding:7px 0; border-bottom:1px dotted var(--paper-line);
+  }
+  .kpi-list li:last-child{border-bottom:none; font-weight:700; font-size:15px; padding-top:10px; border-top:1px dashed var(--ink); margin-top:4px;}
+  .kpi-label{color:var(--ink-soft); font-family:var(--font-body);}
+  .kpi-val.pos{color:var(--green);}
+  .kpi-val.neg{color:var(--red);}
+
+  /* pots */
+  .pot-grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:22px;}
+  @media(max-width:680px){.pot-grid{grid-template-columns:1fr;}}
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{
+    text-align:left; font-family:var(--font-body); font-weight:600; color:var(--ink-soft);
+    font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+    padding:6px 6px; border-bottom:1px solid var(--ink);
+  }
+  td{padding:8px 6px; border-bottom:1px dotted var(--paper-line); font-family:var(--font-mono); vertical-align:middle;}
+  td.label{font-family:var(--font-body); font-size:12.5px;}
+  .swatch{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:7px;}
+  .num{text-align:right; white-space:nowrap;}
+  canvas{max-width:100%;}
+
+  /* petty cash receipt */
+  .petty{display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;}
+  .petty-figure{
+    font-family:var(--font-mono); font-size:34px; font-weight:700; margin:2px 0;
+  }
+  .petty-col{flex:1; min-width:180px;}
+  .tag{
+    display:inline-block; font-family:var(--font-mono); font-size:11px; padding:2px 8px;
+    border-radius:20px; background:#F1EEE0; color:var(--ink-soft); margin-top:4px;
+  }
+  .tag.ok{background:#E4F0E7; color:var(--green);}
+  .tag.warn{background:#F7E7CE; color:var(--yellow);}
+  input[type=number]{
+    font-family:var(--font-mono); font-size:14px; width:100px; padding:6px 8px;
+    border-radius:6px; border:1px solid var(--paper-line); background:#FBFAF3;
+  }
+
+  .note{font-size:12px; color:var(--ink-soft); line-height:1.6;}
+  .footer-perf{
+    height:14px; margin-top:8px;
+    background-image: radial-gradient(circle, var(--paper) 3px, transparent 3.5px);
+    background-size:16px 16px; background-position:6px 0;
+    border-top:1px dashed var(--paper-line);
+  }
+  .empty{
+    text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13px;
+  }
+  .catlist{list-style:none; margin:0; padding:0; font-family:var(--font-mono); font-size:12px;}
+  .catlist li{display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px dotted var(--paper-line);}
+  .catlist span:first-child{font-family:var(--font-body); color:var(--ink);}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="receipt-head">
+    <p class="eyebrow">Wasan Print · บัญชีกองเงิน</p>
+    <h1>วสันต์ปริ้น — แผนการเงิน</h1>
+    <p class="sub">ดึงยอดขาย-รายจ่ายจาก Google Sheet แล้วคำนวณสัดส่วนกองเงินให้อัตโนมัติ</p>
+    <div class="statusline">
+      <span><span class="dot" id="statusDot"></span> <span id="statusText">ยังไม่เชื่อมข้อมูล</span></span>
+      <span id="lastUpdated"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>ตั้งค่าแหล่งข้อมูล</h2>
+    <p class="desc">วางลิงก์ CSV ที่ได้จากการ "เผยแพร่สู่เว็บ" ของชีต Transaction ใน Google Sheet</p>
+    <div class="settings-row">
+      <input type="text" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/e/xxxx/pub?output=csv&gid=xxxx">
+      <button id="saveBtn">บันทึกลิงก์</button>
+      <button class="ghost" id="refreshBtn">↻ รีเฟรชข้อมูล</button>
+    </div>
+    <details>
+      <summary>วิธีเอาลิงก์ CSV จาก Google Sheet</summary>
+      <ol>
+        <li>เปิด Google Sheet → ไปที่แท็บ <code>Transaction</code></li>
+        <li>เมนู File → Share → Publish to web</li>
+        <li>เลือกแท็บ "Transaction" และรูปแบบ "Comma-separated values (.csv)"</li>
+        <li>กด Publish แล้วคัดลอกลิงก์ที่ได้มาวางในช่องด้านบน</li>
+        <li>ทุกครั้งที่แก้ไขข้อมูลในชีต กลับมาหน้านี้แล้วกด "รีเฟรชข้อมูล"</li>
+      </ol>
+    </details>
+  </div>
+
+  <div id="content" style="display:none;">
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h2>สรุปกำไรขาดทุน</h2>
+          <p class="desc" style="margin-bottom:0;">เลือกช่วงเวลาที่ต้องการดู</p>
+        </div>
+        <select id="periodSelect"></select>
+      </div>
+      <ul class="kpi-list" id="kpiList" style="margin-top:14px;"></ul>
+    </div>
+
+    <div class="card">
+      <h2>แบ่งกองเงิน 8 กอง</h2>
+      <p class="desc">คำนวณจาก % เฉลี่ยจริงของรายรับในช่วงที่เลือก แล้วแปลงเป็นเป้าหมายต่อวัน/เดือน</p>
+      <div class="pot-grid">
+        <table>
+          <thead><tr><th>กอง</th><th class="num">% รายรับ</th><th class="num">บาท/วัน</th><th class="num">บาท/เดือน</th></tr></thead>
+          <tbody id="potTableBody"></tbody>
+        </table>
+        <div><canvas id="potChart" height="220" role="img" aria-label="สัดส่วนกองเงินแต่ละกอง"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>เงินสดย่อยรายวัน (ข้าว + น้ำ)</h2>
+      <p class="desc">ตั้งงบต่อวัน แล้วเทียบกับยอดใช้จริงจากข้อมูลล่าสุด</p>
+      <div class="petty">
+        <div class="petty-col">
+          <span class="kpi-label" style="font-size:12px;">งบต่อวัน (ปรับได้)</span><br>
+          <input type="number" id="pettyTarget" value="500" step="50" min="0"> บาท
+        </div>
+        <div class="petty-col">
+          <span class="kpi-label" style="font-size:12px;">ใช้จริงวันล่าสุดในข้อมูล (<span id="pettyDate">-</span>)</span>
+          <div class="petty-figure" id="pettyActual">–</div>
+          <span class="tag" id="pettyTag">รอข้อมูล</span>
+        </div>
+        <div class="petty-col">
+          <span class="kpi-label" style="font-size:12px;">ยอดสะสม buffer ในช่วงที่เลือก</span>
+          <div class="petty-figure" id="pettyBuffer">–</div>
+          <span class="note">ผลรวมของ (งบ − ใช้จริง) ทุกวันที่มีข้อมูล ถ้าเป็นบวก แปลว่าเหลือเก็บได้</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>แนวโน้มรายเดือน</h2>
+      <p class="desc">เทียบรายรับ / ต้นทุนสินค้า / ค่าใช้จ่ายดำเนินงาน / กำไรสุทธิ รายเดือน</p>
+      <canvas id="trendChart" height="230" role="img" aria-label="กราฟแนวโน้มรายรับรายจ่ายรายเดือน"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>หมวดรายจ่ายสูงสุด</h2>
+      <p class="desc">10 อันดับหมวดที่ใช้เงินมากที่สุดในช่วงที่เลือก</p>
+      <ul class="catlist" id="topCats"></ul>
+    </div>
+
+  </div>
+
+  <div id="emptyState" class="card empty">รอเชื่อมต่อ Google Sheet — ใส่ลิงก์ CSV ด้านบนแล้วกด "บันทึกลิงก์"</div>
+
+  <p class="note" style="text-align:center; margin-top:20px;">
+    ตัวเลขจากไฟล์เท่านั้น ไม่ใช่คำแนะนำทางบัญชี/ภาษี ควรตรวจสอบยอด VAT และการจัดหมวดกับนักบัญชีของร้านอีกครั้ง
+  </p>
+  <div class="footer-perf"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ---- category classification ----
+  var POTS = [
+    {key:'cogs',      label:'ต้นทุนสินค้า / สต๊อก (COGS)', color:'#0092C6', cats:null}, // catch-all
+    {key:'cardres',   label:'สำรองจ่ายก้อนใหญ่ต้นเดือน (บัตรเครดิต)', color:'#B5423B', cats:['ค่าบัตรเครดิต']},
+    {key:'opex',      label:'ต้นทุนดำเนินงาน (เช่า/ไฟ/เน็ต/อะไหล่/น้ำมัน ฯลฯ)', color:'#2E7D4F', cats:['ค่าเช่า','ค่าบ้าน','ค่าไฟ','ค่าเน็ต','ค่าบัญชี','ค่าประกัน','ค่าสารณณูปโภค','ค่าอะไหล่','ค่าน้ำมันรถเก๋ง','ค่าน้ำมัน Pajero','ค่าขนส่ง','ค่าการตลาด','ค่า Shopee']},
+    {key:'personnel', label:'บุคคล / เงินเดือน', color:'#B9820A', cats:['เงินเดือน','วสันต์','ลูกชาย','จีจี้']},
+    {key:'restock',   label:'ของใช้ / จ่ายตลาด (ก้อนใหญ่)', color:'#C43D77', cats:['ค่าของ','จ่ายตลาด']},
+    {key:'pettycash', label:'เงินสดย่อยรายวัน (ข้าว+น้ำ)', color:'#7A6FD1', cats:['ค่าข้าว','ค่าน้ำ','ประปา']},
+    {key:'vat',       label:'ภาษี VAT', color:'#33302A', cats:['ค่า VAT']},
+    {key:'health',    label:'สุขภาพ / ฉุกเฉิน', color:'#5A8FBB', cats:['ค่ารักษา']}
+  ];
+  var NAMED_CATS = [];
+  POTS.forEach(function(p){ if(p.cats) NAMED_CATS = NAMED_CATS.concat(p.cats); });
+
+  function classify(cat){
+    for(var i=0;i<POTS.length;i++){
+      if(POTS[i].cats && POTS[i].cats.indexOf(cat) !== -1) return POTS[i].key;
+    }
+    return 'cogs'; // catch-all for anything not explicitly listed
+  }
+
+  var state = { rows: [], potChart:null, trendChart:null };
+
+  // ---- storage helpers ----
+  async function loadSavedUrl(){
+    try{
+      var r = await window.storage.get('wasan_csv_url', false);
+      if(r && r.value) document.getElementById('csvUrl').value = r.value;
+      return r ? r.value : null;
+    }catch(e){ return null; }
+  }
+  async function saveUrl(url){
+    try{ await window.storage.set('wasan_csv_url', url, false); }catch(e){}
+  }
+  async function cacheRows(rows){
+    try{ await window.storage.set('wasan_cache', JSON.stringify(rows), false); }catch(e){}
+  }
+  async function loadCachedRows(){
+    try{
+      var r = await window.storage.get('wasan_cache', false);
+      return r ? JSON.parse(r.value) : null;
+    }catch(e){ return null; }
+  }
+
+  // ---- date parsing ----
+  function parseDate(v){
+    if(!v) return null;
+    v = String(v).trim();
+    var d = new Date(v);
+    if(!isNaN(d.getTime()) && v.match(/\d{4}/)) return d;
+    var m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m){ var dt = new Date(+m[3], +m[1]-1, +m[2]); if(!isNaN(dt.getTime())) return dt; }
+    return null;
+  }
+  function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function monthKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+  function baht(n){ return Math.round(n).toLocaleString('th-TH'); }
+
+  // ---- parse raw 2D array from Papa into transaction rows ----
+  function parseTable(data){
+    var rows = [];
+    for(var i=0;i<data.length;i++){
+      var r = data[i];
+      if(!r || r.length < 6) continue;
+      // try to find date/type/category/amount across the row shifting for possible leading blank col
+      for(var off=0; off<=2; off++){
+        var dateCell = r[off], typeCell = r[off+1], catCell = r[off+2], amtCell = r[off+5];
+        var d = parseDate(dateCell);
+        if(d && (typeCell === 'รายรับ' || typeCell === 'รายจ่าย')){
+          var amt = parseFloat(String(amtCell).replace(/,/g,''));
+          if(isNaN(amt)) amt = 0;
+          rows.push({date:d, type:typeCell, category:(catCell||'').trim(), amount:amt});
+          break;
+        }
+      }
+    }
+    return rows;
+  }
+
+  function setStatus(ok, text){
+    var dot = document.getElementById('statusDot');
+    dot.className = 'dot ' + (ok===null ? '' : (ok?'ok':'err'));
+    document.getElementById('statusText').textContent = text;
+  }
+
+  async function fetchAndRender(){
+    var url = document.getElementById('csvUrl').value.trim();
+    if(!url){ setStatus(false, 'ยังไม่ได้ใส่ลิงก์'); return; }
+    setStatus(null, 'กำลังโหลดข้อมูล...');
+    Papa.parse(url, {
+      download:true,
+      complete: async function(res){
+        var rows = parseTable(res.data);
+        if(rows.length === 0){
+          setStatus(false, 'โหลดสำเร็จแต่หาแถวข้อมูลไม่เจอ ตรวจสอบว่าเป็นชีต Transaction และ publish เป็น CSV แล้ว');
+          var cached = await loadCachedRows();
+          if(cached && cached.length){ state.rows = cached.map(function(r){r.date=new Date(r.date); return r;}); render(); }
+          return;
+        }
+        state.rows = rows;
+        await cacheRows(rows);
+        setStatus(true, 'เชื่อมต่อสำเร็จ · ' + rows.length + ' รายการ');
+        document.getElementById('lastUpdated').textContent = '· อัปเดตล่าสุด ' + new Date().toLocaleTimeString('th-TH');
+        render();
+      },
+      error: async function(err){
+        setStatus(false, 'โหลดไม่สำเร็จ (ตรวจว่า publish to web แล้วหรือยัง) — แสดงข้อมูลที่บันทึกไว้ล่าสุดแทน');
+        var cached = await loadCachedRows();
+        if(cached && cached.length){
+          state.rows = cached.map(function(r){r.date=new Date(r.date); return r;});
+          render();
+        }
+      }
+    });
+  }
+
+  function buildPeriods(rows){
+    var months = {};
+    rows.forEach(function(r){ months[monthKey(r.date)] = true; });
+    var keys = Object.keys(months).sort();
+    var sel = document.getElementById('periodSelect');
+    sel.innerHTML = '';
+    var optAll = document.createElement('option'); optAll.value='all'; optAll.textContent='ทั้งหมด'; sel.appendChild(optAll);
+    keys.forEach(function(k){
+      var o = document.createElement('option'); o.value = k; o.textContent = k; sel.appendChild(o);
+    });
+    sel.value = keys.length ? keys[keys.length-1] : 'all';
+    return sel.value;
+  }
+
+  function filterByPeriod(rows, period){
+    if(period === 'all') return rows;
+    return rows.filter(function(r){ return monthKey(r.date) === period; });
+  }
+
+  function render(){
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    var period = buildPeriods(state.rows);
+    document.getElementById('periodSelect').onchange = function(){ renderForPeriod(this.value); };
+    renderForPeriod(period);
+  }
+
+  function renderForPeriod(period){
+    var rows = filterByPeriod(state.rows, period);
+    var income = rows.filter(function(r){return r.type==='รายรับ';});
+    var expense = rows.filter(function(r){return r.type==='รายจ่าย';});
+    var revenue = income.reduce(function(s,r){return s+r.amount;},0);
+
+    var potTotals = {}; POTS.forEach(function(p){potTotals[p.key]=0;});
+    expense.forEach(function(r){ potTotals[classify(r.category)] += r.amount; });
+
+    var cogs = potTotals.cogs;
+    var opexTotal = 0;
+    POTS.forEach(function(p){ if(p.key!=='cogs') opexTotal += potTotals[p.key]; });
+    var grossProfit = revenue - cogs;
+    var netProfit = revenue - cogs - opexTotal;
+
+    // days span for daily targets
+    var dates = rows.map(function(r){return r.date;});
+    var uniqDays = {};
+    income.forEach(function(r){uniqDays[ymd(r.date)]=true;});
+    var minD = dates.length?new Date(Math.min.apply(null,dates)):new Date();
+    var maxD = dates.length?new Date(Math.max.apply(null,dates)):new Date();
+    var spanDays = Math.max(1, Math.round((maxD-minD)/86400000)+1);
+    var avgDailyRevenue = revenue / spanDays;
+
+    // KPI list
+    var kpiHtml = '';
+    kpiHtml += kpiRow('รายรับ', baht(revenue), '');
+    kpiHtml += kpiRow('ต้นทุนสินค้า (COGS)', baht(cogs), '');
+    kpiHtml += kpiRow('กำไรขั้นต้น', baht(grossProfit), '  (' + (revenue? (grossProfit/revenue*100).toFixed(1):'0') + '%)');
+    kpiHtml += kpiRow('ค่าใช้จ่ายดำเนินงานรวม', baht(opexTotal), '');
+    kpiHtml += kpiRow('กำไรสุทธิ', baht(netProfit), '  (' + (revenue? (netProfit/revenue*100).toFixed(1):'0') + '%)', netProfit>=0);
+    document.getElementById('kpiList').innerHTML = kpiHtml;
+
+    // pot table + chart
+    var tbody = document.getElementById('potTableBody');
+    tbody.innerHTML = '';
+    var chartLabels = [], chartData = [], chartColors = [];
+    POTS.forEach(function(p){
+      var amt = potTotals[p.key];
+      var pct = revenue ? (amt/revenue*100) : 0;
+      var perDay = avgDailyRevenue * (pct/100);
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td class="label"><span class="swatch" style="background:'+p.color+'"></span>'+p.label+'</td>'+
+        '<td class="num">'+pct.toFixed(1)+'%</td>'+
+        '<td class="num">'+baht(perDay)+'</td>'+
+        '<td class="num">'+baht(perDay*30)+'</td>';
+      tbody.appendChild(tr);
+      chartLabels.push(p.label); chartData.push(+pct.toFixed(1)); chartColors.push(p.color);
+    });
+
+    if(state.potChart) state.potChart.destroy();
+    state.potChart = new Chart(document.getElementById('potChart'), {
+      type:'doughnut',
+      data:{ labels:chartLabels, datasets:[{data:chartData, backgroundColor:chartColors, borderColor:'#FFFEF8', borderWidth:2}] },
+      options:{ responsive:true, cutout:'60%', plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(c){return c.label+': '+c.parsed+'%';}}}} }
+    });
+
+    // petty cash
+    var pettyTarget = parseFloat(document.getElementById('pettyTarget').value)||0;
+    var pcRows = expense.filter(function(r){ return r.category==='ค่าข้าว'||r.category==='ค่าน้ำ'||r.category==='ประปา'; });
+    var byDay = {};
+    pcRows.forEach(function(r){ var k=ymd(r.date); byDay[k]=(byDay[k]||0)+r.amount; });
+    var dayKeys = Object.keys(byDay).sort();
+    var lastDay = dayKeys.length ? dayKeys[dayKeys.length-1] : null;
+    document.getElementById('pettyDate').textContent = lastDay || '-';
+    document.getElementById('pettyActual').textContent = lastDay ? baht(byDay[lastDay])+' บ.' : '–';
+    var tagEl = document.getElementById('pettyTag');
+    if(lastDay){
+      if(byDay[lastDay] <= pettyTarget){ tagEl.textContent='อยู่ในงบ'; tagEl.className='tag ok'; }
+      else { tagEl.textContent='เกินงบ'; tagEl.className='tag warn'; }
+    } else { tagEl.textContent='ไม่มีข้อมูล'; tagEl.className='tag'; }
+    var buffer = 0;
+    dayKeys.forEach(function(k){ buffer += (pettyTarget - byDay[k]); });
+    document.getElementById('pettyBuffer').textContent = (buffer>=0?'+':'') + baht(buffer) + ' บ.';
+
+    // top categories
+    var catTotals = {};
+    expense.forEach(function(r){ catTotals[r.category] = (catTotals[r.category]||0)+r.amount; });
+    var sortedCats = Object.keys(catTotals).sort(function(a,b){return catTotals[b]-catTotals[a];}).slice(0,10);
+    var ul = document.getElementById('topCats');
+    ul.innerHTML = sortedCats.map(function(c){
+      return '<li><span>'+c+'</span><span>'+baht(catTotals[c])+' บ.</span></li>';
+    }).join('');
+
+    // trend chart (always full data, not period-filtered)
+    renderTrend();
+  }
+
+  function kpiRow(label, val, extra, positive){
+    var cls = extra ? (positive===false ? 'neg' : (positive===true?'pos':'')) : '';
+    return '<li><span class="kpi-label">'+label+'</span><span class="kpi-val '+cls+'">'+val+' บ.'+(extra||'')+'</span></li>';
+  }
+
+  function renderTrend(){
+    var months = {};
+    state.rows.forEach(function(r){
+      var mk = monthKey(r.date);
+      if(!months[mk]) months[mk] = {revenue:0, cogs:0, opex:0};
+      if(r.type==='รายรับ'){ months[mk].revenue += r.amount; }
+      else{
+        var potKey = classify(r.category);
+        if(potKey==='cogs') months[mk].cogs += r.amount;
+        else months[mk].opex += r.amount;
+      }
+    });
+    var keys = Object.keys(months).sort();
+    var revData = keys.map(function(k){return months[k].revenue;});
+    var cogsData = keys.map(function(k){return months[k].cogs;});
+    var opexData = keys.map(function(k){return months[k].opex;});
+    var netData = keys.map(function(k){return months[k].revenue-months[k].cogs-months[k].opex;});
+
+    if(state.trendChart) state.trendChart.destroy();
+    state.trendChart = new Chart(document.getElementById('trendChart'), {
+      type:'bar',
+      data:{
+        labels:keys,
+        datasets:[
+          {label:'รายรับ', data:revData, backgroundColor:'#0092C6'},
+          {label:'ต้นทุนสินค้า', data:cogsData, backgroundColor:'#C43D77'},
+          {label:'ค่าใช้จ่ายดำเนินงาน', data:opexData, backgroundColor:'#B9820A'},
+          {label:'กำไรสุทธิ', data:netData, type:'line', borderColor:'#2E7D4F', backgroundColor:'#2E7D4F', tension:.2}
+        ]
+      },
+      options:{ responsive:true, plugins:{legend:{position:'bottom', labels:{font:{size:11}}}},
+        scales:{ x:{grid:{display:false}}, y:{ticks:{callback:function(v){return (v/1000)+'k';}}} } }
+    });
+  }
+
+  // ---- wire up ----
+  document.getElementById('saveBtn').onclick = async function(){
+    var url = document.getElementById('csvUrl').value.trim();
+    if(!url) return;
+    await saveUrl(url);
+    fetchAndRender();
+  };
+  document.getElementById('refreshBtn').onclick = fetchAndRender;
+  document.getElementById('pettyTarget').addEventListener('input', function(){
+    var sel = document.getElementById('periodSelect');
+    if(sel && sel.value) renderForPeriod(sel.value);
+  });
+
+  (async function init(){
+    var saved = await loadSavedUrl();
+    var cached = await loadCachedRows();
+    if(cached && cached.length){
+      state.rows = cached.map(function(r){r.date=new Date(r.date); return r;});
+      setStatus(true, 'แสดงข้อมูลที่บันทึกไว้ล่าสุด');
+      document.getElementById('lastUpdated').textContent = '· จากแคชในเครื่อง';
+      render();
+    }
+    if(saved) fetchAndRender();
+  })();
+})();
+</script>
+</body>
+</html>
